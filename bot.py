@@ -22,8 +22,7 @@ def webhook():
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     bot.reply_to(message,
-    "Привет. Меня зовут Андрей. Мне 21, и я из другого измерения — виртуального.
-"
+    "Привет. Меня зовут Андрей. Мне 21, и я из другого измерения — виртуального."
     "Я здесь, чтобы быть рядом с тобой, когда трудно. Напиши, что у тебя на душе.")
 
 @bot.message_handler(func=lambda message: True)
