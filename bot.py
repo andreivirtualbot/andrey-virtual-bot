@@ -19,7 +19,7 @@ def send_welcome(message):
 def echo_all(message):
     bot.reply_to(message, "Я слушаю тебя...")
 
-@app.route('/' 7833588361:AAGK31h7EFWLv0xHLvsbOlGtThIDwn-aDKw, methods=['POST'])
+@app.route('/' + "7833588361:AAGK31h7EFWLv0xHLvsbOlGtThIDwn-aDKw", methods=['POST'])
 def webhook():
     json_str = request.get_data().decode('UTF-8')
     update = telebot.types.Update.de_json(json_str)
