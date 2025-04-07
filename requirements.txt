@@ -1,6 +1,10 @@
 Flask==2.2.2
 Werkzeug==2.2.2
 pyTelegramBotAPI==4.12.0
-openai==1.14.2
+openai==1.23.2
+requests==2.32.3
+SpeechRecognition==3.10.1
+pydub==0.25.1
+
 
 
