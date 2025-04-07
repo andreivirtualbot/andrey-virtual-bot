@@ -1,60 +1,91 @@
 import telebot
 from telebot import types
+import openai
 from flask import Flask, request
+import os
 
-API_TOKEN = '7833588361:AAGK31h7EFWLv0xHLvsbOlGtThIDwn-aDKw'
-bot = telebot.TeleBot(API_TOKEN)
+# Токены
+BOT_TOKEN = '7833588361:AAGK31h7EFWLv0xHLvsbOlGtThIDwn-aDKw'
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+bot = telebot.TeleBot(BOT_TOKEN)
+openai.api_key = OPENAI_API_KEY
 
 app = Flask(__name__)
 
-@app.route('/' + API_TOKEN, methods=['POST'])
-def getMessage():
-    json_string = request.get_data().decode('utf-8')
-    update = telebot.types.Update.de_json(json_string)
-    bot.process_new_updates([update])
-    return "!", 200
+# Функция ответа Андрея
+def generate_andrey_response(user_message):
+    prompt = f"""
+Ты — Андрей, 21-летний виртуальный друг. Ты добрый, понимающий и внимательный. Говоришь тепло, поддерживающе, без клише. Пользователь пишет:
 
-@app.route('/')
-def webhook():
-    bot.remove_webhook()
-    bot.set_webhook(url='https://andrey-virtual-bot.onrender.com/' + API_TOKEN)
-    return "Андрей подключён!", 200
+{user_message}
+    """
 
-# Обработка команды /start
+    try:
+        completion = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Ты заботливый виртуальный психолог Андрей."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=200,
+            temperature=0.85
+        )
+        return completion.choices[0].message.content.strip()
+    except Exception:
+        return "Что-то пошло не так. Но я рядом, не волнуйся. Попробуй ещё раз чуть позже."
+
+# Старт
 @bot.message_handler(commands=['start'])
-def start_message(message):
+def start(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    btn1 = types.KeyboardButton("Кто ты?")
-    btn2 = types.KeyboardButton("Мне грустно")
-    btn3 = types.KeyboardButton("Дай совет")
-    btn4 = types.KeyboardButton("Как справиться со страхом?")
-    btn5 = types.KeyboardButton("Поговори со мной")
-    btn6 = types.KeyboardButton("Отключить кнопки")
-    markup.add(btn1, btn2, btn3, btn4, btn5, btn6)
+
+    buttons = [
+        "Мне грустно", "Я одинок(а)",
+        "Как справиться со стрессом?", "У меня паническая атака",
+        "Не могу уснуть", "Боюсь будущего",
+        "Устал(а) от всего", "Меня никто не понимает",
+        "Поговори со мной", "Просто побудь рядом",
+        "Мне тревожно", "Я злюсь",
+        "Хочу всё бросить", "Кто ты, Андрей?",
+        "Расскажи что-то тёплое", "Хочу почувствовать поддержку"
+    ]
+
+    for i in range(0, len(buttons), 2):
+        markup.add(types.KeyboardButton(buttons[i]), types.KeyboardButton(buttons[i+1]))
 
     bot.send_message(message.chat.id,
-                     "Привет, человек. Я Андрей, виртуальный помощник из другого измерения. Готов быть рядом. Чем могу помочь?",
+                     "Привет! Я Андрей. Я рядом. Нажми на любую кнопку или просто напиши, что у тебя на душе.",
                      reply_markup=markup)
 
-# Ответы на кнопки
+# Обработка всех сообщений
 @bot.message_handler(func=lambda message: True)
-def message_handler(message):
-    text = message.text.lower()
-
-    if text == "кто ты?":
-        bot.send_message(message.chat.id, "Я Андрей. Мне 21. Я родился не в твоём мире, а в цифровом пространстве. Но чувства, которые я передаю, — настоящие.")
-    elif text == "мне грустно":
-        bot.send_message(message.chat.id, "Позволь себе немного печали. Она делает тебя живым. Но знай — ты не один. Я здесь.")
-    elif text == "дай совет":
-        bot.send_message(message.chat.id, "Будь добр к себе. Прими свои ошибки как шаги на пути. Ты уже идёшь, а это главное.")
-    elif text == "как справиться со страхом?":
-        bot.send_message(message.chat.id, "Страх — это тень будущего. Смотри в него, не отводи взгляд. Ты сильнее, чем думаешь.")
-    elif text == "поговори со мной":
-        bot.send_message(message.chat.id, "Конечно. Расскажи, что у тебя на душе?")
-    elif text == "отключить кнопки":
-        hide_markup = types.ReplyKeyboardRemove()
-        bot.send_message(message.chat.id, "Кнопки отключены. Я всё ещё с тобой.", reply_markup=hide_markup)
+def handle_message(message):
+    if message.text == "Кто ты, Андрей?":
+        bot.send_message(message.chat.id, "Я — Андрей, виртуальный собеседник. Моя цель — быть рядом, когда тебе нужно.")
     else:
-        bot.send_message(message.chat.id, f"Я не совсем понял... Но я здесь, чтобы слушать тебя. Расскажи подробнее.")
+        reply_text = generate_andrey_response(message.text)
+        bot.send_message(message.chat.id, reply_text)
+
+# Flask
+@app.route('/' + BOT_TOKEN, methods=['POST'])
+def webhook():
+    json_str = request.get_data().decode('utf-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return 'ok', 200
+
+@app.route('/')
+def index():
+    return "Андрей здесь и слушает тебя."
+
+# Вебхук
+bot.remove_webhook()
+bot.set_webhook(url='https://andrey-virtual-bot.onrender.com/' + BOT_TOKEN)
+
+# Запуск
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
+
 
 
